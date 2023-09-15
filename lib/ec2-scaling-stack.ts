@@ -7,20 +7,20 @@ import * as servicediscovery from 'aws-cdk-lib/aws-servicediscovery';
 interface Ec2ScalingStackProps extends cdk.StackProps {
   vpcName: string
   domainName: string
+  privateAlbSubnetIds: string[]
 }
 export class Ec2ScalingStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: Ec2ScalingStackProps) {
     super(scope, id, props);
     const vpc = ec2.Vpc.fromLookup(this, 'dev-vpc', {vpcName: props.vpcName});
-
-
+    const privateAlbSubnets = props.privateAlbSubnetIds.map( (subnetId) => ec2.Subnet.fromSubnetId(this, subnetId, subnetId))
     const namespace = new servicediscovery.PrivateDnsNamespace(this, 'Namespace', {
       name: props.domainName,
       vpc,
     });
 
     const loadbalancer = new elbv2.ApplicationLoadBalancer(this, 'LB',
-        { vpc, internetFacing: false });
+        { vpc, internetFacing: false, vpcSubnets: {subnets: privateAlbSubnets}});
 
     const serviceA = namespace.createService('ServiceA', {
       name: "service-a",
