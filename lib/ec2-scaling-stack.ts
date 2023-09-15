@@ -8,7 +8,14 @@ interface Ec2ScalingStackProps extends cdk.StackProps {
   vpcName: string
   domainName: string
   privateAlbSubnetIds: string[]
+  loadBalancedServices: LoadBalancedService[]
 }
+
+interface LoadBalancedService {
+  lbName: string
+  services: string[]
+}
+
 export class Ec2ScalingStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: Ec2ScalingStackProps) {
     super(scope, id, props);
@@ -19,33 +26,20 @@ export class Ec2ScalingStack extends cdk.Stack {
       vpc,
     });
 
-    const loadbalancer = new elbv2.ApplicationLoadBalancer(this, 'LB',
-        { vpc, internetFacing: false, vpcSubnets: {subnets: privateAlbSubnets}});
+    for(var i=0; i< props.loadBalancedServices.length; i++) {
+      const lbSvc = props.loadBalancedServices[i]
+      const loadbalancer = new elbv2.ApplicationLoadBalancer(this, 'lb'+ i,
+          { loadBalancerName: lbSvc.lbName, vpc, internetFacing: false, vpcSubnets: {subnets: privateAlbSubnets}});
 
-    const serviceA = namespace.createService('ServiceA', {
-      name: "service-a",
-      dnsRecordType: servicediscovery.DnsRecordType.A_AAAA,
-      dnsTtl: cdk.Duration.seconds(30),
-      loadBalancer: true,
-    });
-    serviceA.registerLoadBalancer('lb-a', loadbalancer);
-
-    const serviceB = namespace.createService('ServiceB', {
-      name: "service-b",
-      dnsRecordType: servicediscovery.DnsRecordType.A_AAAA,
-      dnsTtl: cdk.Duration.seconds(30),
-      loadBalancer: true,
-    });
-    serviceB.registerLoadBalancer('lb-b', loadbalancer);
-
-
-    // const arnService = namespace.createService('ArnService', {
-    //   discoveryType: servicediscovery.DiscoveryType.API,
-    // });
-    //
-    // arnService.registerNonIpInstance('NonIpInstance', {
-    //   customAttributes: { arn: 'arn://' },
-    // });
-
+      for(var j=0;j <lbSvc.services.length; j++) {
+        const svc = namespace.createService('lb'+ i + '-svc'+j, {
+          name: lbSvc.services[j],
+          dnsRecordType: servicediscovery.DnsRecordType.A_AAAA,
+          dnsTtl: cdk.Duration.seconds(30),
+          loadBalancer: true,
+        });
+        svc.registerLoadBalancer('lb'+ i + '-svc-inst'+j, loadbalancer);
+      }
+    }
   }
 }

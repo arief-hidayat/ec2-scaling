@@ -10,4 +10,10 @@ new Ec2ScalingStack(app, 'Ec2ScalingStack', {
   vpcName: 'AriefhInfraStack/dev-vpc',
   domainName: 'ariefh.com',
   privateAlbSubnetIds: ['', ''],
+  loadBalancedServices: [
+    {
+      lbName: '',
+      services: ['']
+    }
+  ]
 });
